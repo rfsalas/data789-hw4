@@ -7,7 +7,7 @@ autoscaling, and updatable with zero downtime. You do **not** rebuild the app.
 The fraud service is provided as a **pre-built image you pull**:
 `ghcr.io/rfsalas/trustbank-fraud:v1` — no Dockerfile, no build.
 
-> Weighted **5%** — keep it tight. Graded core: a clean Kubernetes deploy + one
+> Keep it tight — the graded core is a clean Kubernetes deploy plus one
 > zero-downtime update, shown with evidence (manifests + `kubectl` screenshots +
 > a 2-minute rolling-update demo).
 
@@ -73,15 +73,17 @@ kubectl apply -f k8s/blue-green/ && ./scripts/bluegreen_switch.sh green
 **HPA note:** needs `minikube addons enable metrics-server` (local_up.sh does this); give
 it a minute or `kubectl get hpa` shows `<unknown>`.
 
-## Path B · Required floor — Azure Container Apps
+## Path B · Required — Azure Container Apps
 
 Easiest in **Azure Cloud Shell** (already signed in). This ships the API to real cloud and
-gives a public URL. It runs the API alone, so you verify `GET /health` here (a live
-`/predict` is the local-K8s demo above).
+gives a public URL. It runs the API alone (no Redis) — `/predict` still returns a valid
+score (an unknown customer falls back to the built-in scorer), so you verify the real
+cloud endpoint here.
 
 ```bash
 ./deploy_azure.sh                               # imports the image → Container Apps → public URL
-curl https://<fqdn>/health                      # → {"status":"ok"}  ← screenshot
+curl https://<fqdn>/health                      # → {"status":"ok"}
+./scripts/smoke_test.sh https://<fqdn>          # POST /predict → a fraud decision  ← screenshot
 ./teardown_azure.sh                             # ← DO THIS THE SAME DAY
 ```
 
@@ -109,5 +111,5 @@ AKS is bonus, so fall back to Minikube or the Container Apps floor.
 
 See `HW4-rubric-checklist.md`. In short: your `k8s/` manifests; screenshots of
 `kubectl get pods,svc,hpa` (3/3 ready, a real HPA target) and a 200 from `/predict`; the
-rolling-update demo showing **0 dropped requests**; the Azure floor `/health` 200 +
+rolling-update demo showing **0 dropped requests**; the Azure floor `/predict` 200 +
 teardown proof; (bonus) AKS.
