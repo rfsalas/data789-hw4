@@ -31,9 +31,12 @@ hw4/
 │  ├─ rolling_update_demo.sh      # the 2-min zero-drop demo
 │  ├─ bluegreen_switch.sh         # flip blue↔green
 │  └─ sample_transaction.json     # a real /predict body
-├─ deploy_azure.sh / teardown_azure.sh   # the required Azure floor
+├─ deploy_azure.sh / teardown_azure.sh   # the required Azure step
 ├─ aks_bonus.sh                   # bonus: same manifests on real AKS
 ├─ .devcontainer/                 # ready env: kubectl + az + minikube
+├─ .github/workflows/autograde.yml# auto-checks your manifests on every push
+├─ GITHUB-QUICKSTART.md           # how to submit via GitHub (no command line)
+├─ AZURE-QUICKSTART.md            # Azure for Students: sign up, stay free, tear down
 ├─ HW4-rubric-checklist.md        # exactly what's graded
 └─ README-hw4.md                  # you are here
 ```
@@ -74,6 +77,8 @@ kubectl apply -f k8s/blue-green/ && ./scripts/bluegreen_switch.sh green
 it a minute or `kubectl get hpa` shows `<unknown>`.
 
 ## Path B · Required — Azure Container Apps
+
+**New to Azure? Read [`AZURE-QUICKSTART.md`](AZURE-QUICKSTART.md) first** — sign-up, staying at ~$0, and one-click teardown.
 
 Easiest in **Azure Cloud Shell** (already signed in). This ships the API to real cloud and
 gives a public URL. It runs the API alone (no Redis) — `/predict` still returns a valid
