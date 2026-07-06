@@ -17,14 +17,14 @@ spec:
     kind: Deployment
     name: trustbank-fraud
   minReplicas: 3
-  maxReplicas: 10
+  maxReplicas: 10                    # HW4: set per the assignment
   metrics:
     - type: Resource
       resource:
         name: cpu
         target:
           type: Utilization
-          averageUtilization: 50      # target 50% of the CPU *request* (100m) per pod
+          averageUtilization: 50      # HW4: set per the assignment (this is % of the CPU request)
   behavior:
     scaleDown:
       stabilizationWindowSeconds: 120  # avoid flapping: wait 2 min of low load before scaling in

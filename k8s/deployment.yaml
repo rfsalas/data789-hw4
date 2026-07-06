@@ -25,6 +25,7 @@ spec:
       labels:
         app: trustbank-fraud
         color: blue                    # only used by the blue-green variant (k8s/blue-green/)
+        # HW4: add  owner: <your-onyen>  here (and on the Deployment's metadata.labels above)
     spec:
       containers:
         - name: fraud
@@ -40,7 +41,7 @@ spec:
             requests:                             # what the scheduler reserves
               cpu: "100m"
               memory: "128Mi"
-            limits:                               # hard ceiling (also lets the HPA read % of request)
+            limits:                               # hard ceiling. HW4: right-size these per the assignment
               cpu: "500m"
               memory: "256Mi"
           # Probes hit GET /health — it returns 200 WITHOUT touching Redis, so pods

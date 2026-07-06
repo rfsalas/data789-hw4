@@ -35,6 +35,11 @@ jobs:
           check "Liveness probe present"            "grep -q 'livenessProbe:' k8s/deployment.yaml"
           check "HorizontalPodAutoscaler present"   "grep -Rqi 'kind:[[:space:]]*HorizontalPodAutoscaler' k8s/"
           check "LoadBalancer Service present"      "grep -Rqi 'type:[[:space:]]*LoadBalancer' k8s/"
+          check "CPU limit right-sized (250m)"      "grep -q '250m' k8s/deployment.yaml"
+          check "Memory limit right-sized (192Mi)"  "grep -q '192Mi' k8s/deployment.yaml"
+          check "owner label added"                 "grep -Eq '^[[:space:]]*owner:' k8s/deployment.yaml"
+          check "HPA target set to 40%"             "grep -Eq 'averageUtilization:[[:space:]]*40' k8s/hpa.yaml"
+          check "HPA maxReplicas set to 8"          "grep -Eq 'maxReplicas:[[:space:]]*8' k8s/hpa.yaml"
           echo ""
           if [ "$fail" -ne 0 ]; then
             echo "Some required elements are missing — see the FAIL lines above, fix, and push again."
