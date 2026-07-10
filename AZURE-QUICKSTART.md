@@ -21,7 +21,13 @@ Read this first — especially if you've never used Azure.
 - **Just run the provided `deploy_azure.sh`.** It already uses the free-friendly settings
   (small container, scale-to-zero, one resource group) — you don't need to tune anything.
 - Work in **Azure Cloud Shell** (in the portal, click the `>_` icon) — it's free, already signed
-  in, and needs no local install.
+  in, and needs no local install. **Use Cloud Shell** — signing the Azure CLI in on a personal/
+  campus-managed laptop may be blocked by university policy (error 53003); Cloud Shell avoids that.
+- **Pick your student subscription first.** Cloud Shell may default to a university subscription
+  where you can't create resources (you'll see `AuthorizationFailed`). Before deploying, run:
+  ```
+  az account set --subscription "Azure for Students"
+  ```
 - Heads-up: your **first** deploy may pause a few minutes while Azure "registers resource
   providers." That's normal — let it finish.
 

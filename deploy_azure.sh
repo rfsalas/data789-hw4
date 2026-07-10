@@ -16,15 +16,24 @@ set -euo pipefail
 # ─────────────────────────────────────────────────────────────────────────────
 source "$(dirname "$0")/config.env"
 
-SUFFIX="$(echo "${USER:-$RANDOM}" | tr -cd 'a-z0-9' | cut -c1-12)"  # unique-per-student
-LOCATION="centralus"                         # course default — do NOT use eastus/eastus2
+SUFFIX="$(echo "${USER:-student}" | tr -cd 'a-z0-9' | cut -c1-12)"  # unique-per-student (export USER=<onyen>)
+LOCATION="${LOCATION:-eastus2}"               # allowed by the Azure for Students region policy.
+                                              # centralus is DISALLOWED there. Override: export LOCATION=<region>.
+                                              # Allowed set: eastus2 westus3 northcentralus southcentralus canadacentral
 RG="rg-data789-hw4-${SUFFIX}"
 ACR_NAME="$(echo "acrdata789hw4${SUFFIX}" | cut -c1-50)"   # 5-50 lower-alnum, globally unique
 ENV_NAME="cae-data789-hw4"
 APP_NAME="trustbank-fraud"
 TAG="v1"
 
-echo "▶ subscription : $(az account show --query name -o tsv 2>/dev/null || { echo 'NOT LOGGED IN — run: az login'; exit 1; })"
+SUB_NAME="$(az account show --query name -o tsv 2>/dev/null)" || { echo 'NOT LOGGED IN — open Azure Cloud Shell, or run: az login'; exit 1; }
+echo "▶ subscription : ${SUB_NAME}"
+case "$SUB_NAME" in
+  *Student*|*student*) : ;;
+  *) echo "   ⚠️  This is not an 'Azure for Students' subscription. Cloud Shell often defaults to an"
+     echo "      institutional one where you lack rights (AuthorizationFailed). If so, run:"
+     echo "        az account set --subscription \"Azure for Students\"   and re-run this script." ;;
+esac
 echo "▶ region       : $LOCATION"
 echo "▶ source image : $IMAGE"
 echo
@@ -47,12 +56,29 @@ FULL_IMAGE="${ACR_NAME}.azurecr.io/${APP_NAME}:${TAG}"
 echo "▶ creating Container Apps environment…"
 az containerapp env create -n "$ENV_NAME" -g "$RG" -l "$LOCATION" -o none
 
-echo "▶ deploying the container app (system identity + AcrPull, scale-to-zero)…"
+echo "▶ creating a user-assigned managed identity for ACR pulls…"
+# Why a USER-assigned identity (not --registry-identity system): on a fresh Azure for Students
+# subscription, the system-identity flow hits a race — the app tries to pull before its AcrPull
+# role has propagated, and provisioning fails with 'unable to pull image using Managed identity'.
+# Creating the identity + granting AcrPull FIRST (with a propagation wait) makes the pull reliable.
+UAMI_NAME="id-${APP_NAME}"
+az identity create -n "$UAMI_NAME" -g "$RG" -o none
+UAMI_ID="$(az identity show -n "$UAMI_NAME" -g "$RG" --query id -o tsv)"
+UAMI_PRINCIPAL="$(az identity show -n "$UAMI_NAME" -g "$RG" --query principalId -o tsv)"
+ACR_ID="$(az acr show -n "$ACR_NAME" -g "$RG" --query id -o tsv)"
+
+echo "▶ granting the identity AcrPull and waiting for RBAC to propagate…"
+az role assignment create --assignee-object-id "$UAMI_PRINCIPAL" \
+  --assignee-principal-type ServicePrincipal --role AcrPull --scope "$ACR_ID" -o none
+sleep 90   # AcrPull must be effective BEFORE the app pulls — this avoids the managed-identity race
+
+echo "▶ deploying the container app (user-assigned identity + AcrPull, scale-to-zero)…"
 az containerapp create \
   -n "$APP_NAME" -g "$RG" --environment "$ENV_NAME" \
   --image "$FULL_IMAGE" \
   --registry-server "${ACR_NAME}.azurecr.io" \
-  --registry-identity system \
+  --registry-identity "$UAMI_ID" \
+  --user-assigned "$UAMI_ID" \
   --target-port "$CONTAINER_PORT" --ingress external \
   --cpu 0.25 --memory 0.5Gi \
   --min-replicas 0 --max-replicas 3 \
@@ -72,10 +98,9 @@ echo
 echo "   ⚠️  capture your screenshot, then TEAR DOWN SAME DAY:"
 echo "      ./teardown_azure.sh"
 echo
-# ── TROUBLESHOOTING — first revision failed to pull? (AcrPull still propagating) ──
-#   PRINCIPAL="$(az containerapp show -n "$APP_NAME" -g "$RG" --query identity.principalId -o tsv)"
-#   ACR_ID="$(az acr show -n "$ACR_NAME" -g "$RG" --query id -o tsv)"
-#   az role assignment create --assignee "$PRINCIPAL" --role AcrPull --scope "$ACR_ID"
-#   sleep 60   # let RBAC propagate
-#   az containerapp revision restart -n "$APP_NAME" -g "$RG" \
-#     --revision "$(az containerapp revision list -n "$APP_NAME" -g "$RG" --query '[0].name' -o tsv)"
+# ── TROUBLESHOOTING ──────────────────────────────────────────────────────────
+# Region blocked (RequestDisallowedByAzure)?  export LOCATION=<allowed region> and re-run.
+#   Allowed on Azure for Students: eastus2 westus3 northcentralus southcentralus canadacentral
+# Wrong subscription (AuthorizationFailed)?    az account set --subscription "Azure for Students"
+# Still 'unable to pull with Managed identity'? give RBAC more time, then re-point the image:
+#   az containerapp update -n "$APP_NAME" -g "$RG" --image "$FULL_IMAGE"

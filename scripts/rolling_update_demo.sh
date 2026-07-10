@@ -5,10 +5,9 @@ set -euo pipefail
 # image, and count non-200s. Goal: ZERO dropped requests (maxUnavailable: 0).
 #
 # Usage: ./scripts/rolling_update_demo.sh <base-url> <new-image-ref>
-#   e.g. ./scripts/rolling_update_demo.sh http://localhost:8080 trustbank-fraud:v2
+#   e.g. ./scripts/rolling_update_demo.sh http://localhost:8080 ghcr.io/rfsalas/trustbank-fraud:v2
 #
-# Tip: build a trivially-different v2 first, e.g.
-#   docker build -t trustbank-fraud:v2 . && minikube image load trustbank-fraud:v2
+# Note: there is NO Dockerfile in this kit — use the PUBLISHED :v2 tag above; do not try to build it.
 # ─────────────────────────────────────────────────────────────────────────────
 source "$(dirname "$0")/../config.env"
 BASE="${1:?usage: rolling_update_demo.sh <base-url> <new-image-ref>}"
